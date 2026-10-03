@@ -1,0 +1,6 @@
+[build]
+  command = "mkdir -p public netlify/functions && cp index.html public/index.html && cp api.mjs netlify/functions/api.mjs"
+  publish = "public"
+
+[functions]
+  directory = "netlify/functions"
