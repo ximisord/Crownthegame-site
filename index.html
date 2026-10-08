@@ -26,6 +26,8 @@ h1{font-size:clamp(34px,9vw,56px);font-weight:900;letter-spacing:.06em;color:var
 .tier b{font-family:Cinzel,serif;color:var(--gold2);min-width:6.4em}
 .tier span{color:var(--mute);font-size:16px}
 .tier.top{border-left-color:var(--ruby);background:linear-gradient(90deg,#3a1736,var(--vel))}
+.prize{background:linear-gradient(90deg,#3a1736,var(--vel));border:1px solid var(--gold);border-radius:4px;padding:14px 16px;margin:22px 0 0;text-align:left;font-size:16px}.prize b{color:var(--gold2)}.prize p{margin:0 0 8px}.prize p:last-child{margin:0}
+.tmsg{color:#ffb4c0;text-align:center;margin:12px 0 0;min-height:1.2em}
 .fine{color:var(--mute);font-size:14px;margin-top:22px}
 .hud{display:flex;justify-content:space-between;align-items:center;font-family:Cinzel,serif;color:var(--gold2);font-size:15px;letter-spacing:.05em}
 .bar{height:6px;background:var(--vel);border-radius:3px;margin:12px 0 26px;overflow:hidden}
@@ -36,6 +38,7 @@ h1{font-size:clamp(34px,9vw,56px);font-weight:900;letter-spacing:.06em;color:var
 .opt{font:inherit;font-size:18px;text-align:left;background:var(--vel);color:var(--ivory);border:1px solid #3a418a;border-radius:4px;padding:15px 18px;cursor:pointer}
 .opt:hover:not(:disabled){border-color:var(--gold);background:var(--panel)}
 .opt.ok{background:var(--emerald);border-color:#6fd3a9;color:#fff}
+.opt.reveal{background:var(--vel);border:2px dashed var(--gold2);color:var(--ivory)}
 .opt.no{background:var(--ruby);border-color:#e47a8d;color:#fff}
 .opt:disabled{cursor:default}
 .next{margin-top:24px}
@@ -72,7 +75,13 @@ input:focus-visible{outline:3px solid var(--gold2);outline-offset:2px}
       <div class="tier"><b>Duke</b><span>8+ correct: 3 draw entries</span></div>
       <div class="tier top"><b>Crowned</b><span>10 of 10: 10 draw entries</span></div>
     </div>
-    <button class="btn" id="start">Begin your trial</button>
+    <div class="prize">
+      <p><b>The Jackpot:</b> the first player to answer all 10 questions correctly wins the jackpot.</p>
+      <p><b>Top 25 prize pot:</b> the 25 highest scorers share a $20 pot, split into random amounts.</p>
+      <p>You have 15 seconds per question. If time runs out, the question counts as wrong.</p>
+    </div>
+    <p class="fine" id="jpstatus" style="margin-top:10px"></p>
+    <button class="btn" id="start" style="margin-top:18px">Begin your trial</button>
     <p class="err" id="herr" role="alert" style="margin:12px 0 0"></p>
     <p class="fine">No sign-up to play. Earn your title first; if you win entries, you will create a free royal account to save them. Your first round is the ranked round; later rounds are for practice.</p>
     <p class="fine">Already have an account? <button class="lnk" id="tocheck">Sign in</button></p>
@@ -94,6 +103,7 @@ input:focus-visible{outline:3px solid var(--gold2);outline-offset:2px}
     <div class="bar"><i id="fill"></i></div>
     <div class="q" id="qtext"></div>
     <div class="opts" id="opts"></div>
+    <p class="tmsg" id="tmsg" role="status"></p>
     <button class="btn next hide" id="next">Next question</button>
   </section>
 
@@ -316,8 +326,8 @@ const api=LIVE?{
   claim:(s,e)=>post('/claim',{session:s,email:e}),verify:(s,e,c)=>post('/verify',{session:s,email:e,code:c}),lookup:e=>post('/signin',{email:e}),signinVerify:(e,c)=>post('/signin/verify',{email:e,code:c})
 }:{
   async start(){demoScore=0;demoRight=0;demoQs=pickQs();return{session:'demo',questions:demoQs.map((x,n)=>({id:n,q:x[0],options:x[1]}))}},
-  async answer(s,id,ch,ms){const a=demoQs[id][2],ok=ch===a,p=pts(ok,ms);if(ok)demoRight++;demoScore+=p;return{answerIndex:a,points:p}},
-  async finish(){const r=demoRight,tier=r>=10?'crowned':r>=8?'duke':r>=6?'knight':r>=3?'squire':'peasant';demoRes={right:r,score:demoScore,tier,entries:ENTRIES[tier]};return demoRes},
+  async answer(s,id,ch,ms){const a=demoQs[id][2],late=ch===null||ms>=TIME*1000,ok=!late&&ch===a,p=pts(ok,ms);if(ok)demoRight++;demoScore+=p;return{answerIndex:a,points:p,timedOut:late}},
+  async finish(){const r=demoRight,tier=r>=10?'crowned':r>=8?'duke':r>=6?'knight':r>=3?'squire':'peasant';demoRes={right:r,score:demoScore,tier,entries:ENTRIES[tier],jackpot:r>=10?'won':null};return demoRes},
   async claim(s,e){if(store.get('ctg-claimed:'+e))throw{code:'played'};store.set('ctg-claimed:'+e,1);const o={tier:demoRes.tier,entries:demoRes.entries,code:code()};store.set('ctg-receipt:'+e,o);return o},
   async signinVerify(){throw{code:'error'}},
   async lookup(e){const r=store.get('ctg-receipt:'+e);if(!r)throw{code:'none',status:404};return r}
@@ -345,18 +355,20 @@ function ask(){
   const box=$('opts');box.innerHTML='';
   shuf(q.options.map((t,k)=>({t,k}))).forEach(({t,k})=>{
     const b=document.createElement('button');b.className='opt';b.textContent=t;b.dataset.k=k;b.onclick=()=>pick(b,k);box.appendChild(b)});
-  t0=Date.now();tick();timer=setInterval(tick,100);
+  $('tmsg').textContent='';t0=Date.now();tick();timer=setInterval(tick,100);
 }
 const left=()=>Math.max(0,TIME-(Date.now()-t0)/1000);
-function tick(){const l=left();$('fill').style.width=(l/TIME*100)+'%';$('fill').classList.toggle('low',l<5);if(l<=0&&!locked)pick(null,-1)}
+function tick(){const l=left();$('fill').style.width=(l/TIME*100)+'%';$('fill').classList.toggle('low',l<5);if(l<=0&&!locked)pick(null,null)}
 async function pick(btn,k){
   if(locked)return;locked=true;clearInterval(timer);
-  const ms=Math.min(TIME*1000,Date.now()-t0);
+  const ms=k===null?TIME*1000:Math.min(TIME*1000,Date.now()-t0);$('tmsg').textContent='';
   document.querySelectorAll('.opt').forEach(b=>b.disabled=true);
   let r;try{r=await api.answer(session,qs[i].id,k,ms)}catch(e){$('qtext').textContent=errText(e);return}
   if(r.points>0)right++;score+=r.points;
-  document.querySelectorAll('.opt').forEach(b=>{if(+b.dataset.k===r.answerIndex)b.classList.add('ok')});
-  if(btn&&k!==r.answerIndex)btn.classList.add('no');
+  const timedOut=k===null||r.timedOut;
+  document.querySelectorAll('.opt').forEach(b=>{if(+b.dataset.k===r.answerIndex)b.classList.add(timedOut?'reveal':'ok')});
+  if(timedOut)$('tmsg').textContent="Time's up! No answer counts as wrong. The correct answer is outlined.";
+  else if(btn&&k!==r.answerIndex)btn.classList.add('no');
   $('pts').textContent=`${score} pts`;
   const last=i===qs.length-1;$('next').textContent=last?'See your verdict':'Next question';$('next').classList.remove('hide');$('next').focus();
 }
@@ -368,9 +380,10 @@ async function finish(){
   try{result=await api.finish(session)}catch(e){$('qtext').textContent=errText(e);return}
   $('rank').textContent=TITLES[result.tier];$('final').textContent=`${result.right} of ${qs.length} correct · ${result.score} points`;
   $('decree').classList.add('hide');$('claim').classList.add('hide');$('err').textContent='';pending=ranked&&result.entries>0;$('practice').classList.toggle('hide',pending);
+  const jm=result.jackpot==='won'?'JACKPOT! You are the first player to answer all 10 correctly. Create your account below to claim it.':result.jackpot==='missed'?'A perfect 10 of 10, but another player got there first and took the jackpot.':'';
   if(!ranked)$('msg').textContent='Practice round: no entries are awarded. Your ranked round was your first.';
-  else if(result.entries>0){$('msg').textContent=NOTES[result.tier];$('claimp').textContent=`You have earned ${result.entries} draw ${result.entries>1?'entries':'entry'}. They are held for you, but only count once you create a free royal account. Entries not saved are not entered in the draw.`;$('claim').classList.remove('hide')}
-  else $('msg').textContent=NOTES[result.tier]+' Score 6 or more in a ranked round to earn entries.';
+  else if(result.entries>0){$('msg').textContent=(jm?jm+' ':'')+NOTES[result.tier];$('claimp').textContent=`You have earned ${result.entries} draw ${result.entries>1?'entries':'entry'}. They are held for you, but only count once you create a free royal account. Entries not saved are not entered in the draw.`;$('claim').classList.remove('hide')}
+  else $('msg').textContent=NOTES[result.tier]+' Score 6 or more in a ranked round to earn entries. Only the first perfect 10 of 10 wins the jackpot, and the top 25 scorers share the $20 pot.';
   show('end');
 }
 async function seal(){
@@ -394,6 +407,7 @@ async function lookup(){
   try{const r=await api.lookup(e);email=e;if(r.status==='verify'){vmode='signin';$('vmail').textContent=e;show('verify')}else{showReceipt(r,'ctitle','ccode','cnote');$('cres').classList.remove('hide')}}
   catch(x){$('cerr').textContent=errText(x)}
 }
+if(LIVE)fetch(CONFIG.API_BASE+'/jackpot').then(r=>r.json()).then(j=>{$('jpstatus').textContent=j.won?'The jackpot has already been won. Top 25 prizes are still up for grabs.':'The jackpot is still up for grabs. Nobody has gone 10 for 10 yet.'}).catch(()=>{});
 $('start').onclick=begin;$('practice').onclick=begin;$('seal').onclick=seal;$('vgo').onclick=verify;$('cgo').onclick=lookup;
 $('next').onclick=()=>{if(i===qs.length-1)finish();else{i++;ask()}};
 ['tocheck','tocheck2'].forEach(id=>$(id).onclick=()=>{$('cmail').value=email;show('check')});

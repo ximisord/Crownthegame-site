@@ -1,1 +1,1 @@
-{"name":"crown-the-game","version":"1.0.0","private":true,"dependencies":{"@netlify/blobs":"latest"}}
+{"name":"crown-the-game","version":"1.0.0","private":true,"dependencies":{"@netlify/blobs":"latest","nodemailer":"^6.9.0"}}
