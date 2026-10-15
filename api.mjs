@@ -208,6 +208,25 @@ export default async (req, context) => {
 
   if (req.method === "GET") {
     if (route === "/health") return json({ ok: true, questions: BANK.length });
+    // TEMPORARY diagnostics. Delete these two routes once email works.
+    if (route === "/diag") return json({
+      resendKeySet: !!process.env.RESEND_API_KEY,
+      mailFrom: process.env.MAIL_FROM || null,
+      ownerEmailSet: !!process.env.OWNER_EMAIL,
+      adminKeyLength: (process.env.ADMIN_KEY || "").length,
+      smtpHostSet: !!process.env.SMTP_HOST
+    });
+    if (route === "/mailtest") {
+      // Sends one test email to OWNER_EMAIL only, and shows the exact error if it fails.
+      if (await limited(ip, "mailtest", 5)) return fail(429, "rate_limited");
+      if (!process.env.OWNER_EMAIL) return json({ ok: false, error: "OWNER_EMAIL is not set" }, 500);
+      try {
+        await mail(process.env.OWNER_EMAIL, "Crown the Game test", "Test email from Crown the Game.");
+        return json({ ok: true, sentTo: process.env.OWNER_EMAIL });
+      } catch (e) {
+        return json({ ok: false, error: String(e.message) }, 500);
+      }
+    }
     if (route === "/contest/status") {
       await settleDue();
       return json({ now: Date.now(), ...contestTimes(Date.now()) });
