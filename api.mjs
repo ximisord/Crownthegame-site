@@ -67,9 +67,14 @@ async function sendCode(email, session) {
   if (prev && prev.sent && Date.now() - prev.sent < 60000) return; // one code per address per minute
   const code = String(crypto.randomInt(100000, 1000000));
   await put("codes", k, { hash: sha(code + email), session, sent: Date.now(), expires: Date.now() + 600000, tries: 0 });
-  await mail(email, "Your Crown the Game code",
-    `Your verification code is ${code}. It expires in 10 minutes.`,
-    wrap("Your verification code", `<p style="font-size:34px;letter-spacing:8px;margin:12px 0;color:#e6c76a">${code}</p><p>It expires in 10 minutes.</p>`));
+  try {
+    await mail(email, "Your Crown the Game code",
+      `Your verification code is ${code}. It expires in 10 minutes.`,
+      wrap("Your verification code", `<p style="font-size:34px;letter-spacing:8px;margin:12px 0;color:#e6c76a">${code}</p><p>It expires in 10 minutes.</p>`));
+  } catch (e) {
+    await del("codes", k); // so a retry is not blocked by the 60-second limit
+    throw e;
+  }
 }
 async function checkCode(email, code) {
   const k = sha(email), row = await get("codes", k);
@@ -235,6 +240,16 @@ export default async (req, context) => {
           wrap("Payout sent", `<p>Your payout of <b>${money(v.cents)}</b> was sent to your ${v.method === "venmo" ? "Venmo" : "Cash App"} (${esc(v.handle)}).</p>`));
       } catch (e) { console.error("paid email failed", e); }
       return json({ ok: true });
+    }
+    if (route === "/admin/testmail") {
+      // Open /api/admin/testmail?key=YOUR_ADMIN_KEY&to=you@email.com to see the exact email error in your browser.
+      if (!isAdmin(url)) return fail(403, "error");
+      try {
+        await mail(url.searchParams.get("to") || process.env.OWNER_EMAIL, "Crown the Game test", "Test email from Crown the Game.");
+        return json({ ok: true });
+      } catch (e) {
+        return json({ ok: false, error: String(e.message) }, 500);
+      }
     }
     return fail(404, "error");
   }
