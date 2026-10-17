@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<meta name="referrer" content="no-referrer">
+<title>Crown the Game: Admin</title>
+<style>
+body{margin:0;background:#0f1230;color:#f6efdc;font:16px/1.5 Georgia,serif;padding:20px}
+main{max-width:760px;margin:0 auto}
+h1,h2{font-weight:600;color:#f3dc9a;margin:24px 0 8px}
+input,button{font:inherit;padding:10px 14px;border-radius:4px;border:1px solid #3a418a;background:#1a1f4d;color:#f6efdc}
+button{cursor:pointer;background:#d9b25a;color:#2a1d02;border:0;font-weight:700}
+button:disabled{opacity:.5;cursor:default}
+.card{background:#1a1f4d;border:1px solid #3a418a;border-radius:4px;padding:12px 14px;margin:10px 0}
+.card.pending{border-color:#d9b25a}
+.row{display:flex;gap:10px;flex-wrap:wrap;justify-content:space-between;align-items:center}
+.flag{color:#ffb4c0;font-size:14px}.mute{color:#a9a9c9;font-size:14px}.err{color:#ff9aab;min-height:1.3em}
+</style>
+</head>
+<body>
+<main>
+  <h1>Crown the Game: Admin</h1>
+  <div id="login">
+    <p class="mute">Enter your ADMIN_KEY. It is kept only in this browser tab.</p>
+    <input id="key" type="password" autocomplete="current-password" placeholder="Admin key">
+    <button id="go">Sign in</button>
+    <div class="err" id="lerr"></div>
+  </div>
+  <div id="panel" hidden>
+    <p><button id="out">Sign out</button></p>
+    <h2>Setup check</h2><div id="status" class="card"></div>
+    <h2>Cash-out requests</h2><div id="cashouts"></div>
+    <h2>Contest results</h2>
+    <p><input id="cid" placeholder="YYYY-MM-DD (blank = latest)"> <button id="load">Load</button></p>
+    <div id="contest"></div>
+  </div>
+</main>
+<script src="/admin.js"></script>
+</body>
+</html>
