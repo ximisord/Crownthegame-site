@@ -41,6 +41,13 @@ async function enter(){
 }
 $('go').onclick=()=>{key=$('key').value.trim();$('key').value='';enter()};
 $('key').addEventListener('keydown',e=>{if(e.key==='Enter')$('go').click()});
+async function fetchCsv(){
+  const r=await fetch('/api/admin/players',{headers:{Authorization:'Bearer '+key}});
+  if(!r.ok)throw new Error('Error '+r.status);
+  const t=await r.text();$('pcount').textContent=Math.max(0,t.trim().split('\n').length-1)+' players';return t;
+}
+$('dl').onclick=async()=>{try{const t=await fetchCsv(),a=document.createElement('a');a.href=URL.createObjectURL(new Blob([t],{type:'text/csv'}));a.download='crown-players.csv';document.body.append(a);a.click();a.remove()}catch(e){alert(e.message)}};
+$('cp').onclick=async()=>{try{await navigator.clipboard.writeText(await fetchCsv());alert('Copied. Paste it into Notes or a spreadsheet app.')}catch(e){alert(e.message)}};
 $('load').onclick=()=>loadContest().catch(e=>alert(e.message));
 $('out').onclick=()=>{key='';sessionStorage.removeItem('ctg-admin');location.reload()};
 if(key)enter();

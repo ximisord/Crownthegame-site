@@ -6,7 +6,22 @@ const NOTES={crowned:'You wear the crown.',duke:'A noble showing.',knight:'You h
 const store={get:k=>{try{return JSON.parse(localStorage.getItem(k))}catch(e){return null}},set:(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}},del:k=>{try{localStorage.removeItem(k)}catch(e){}}};
 const $$=c=>'$'+(c/100).toFixed(2);
 let token=store.get('ctg-token'),acct=null;
-async function post(p,b){let r;try{r=await fetch(CONFIG.API_BASE+p,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token,...b})})}catch(e){throw{code:'network'}}
+// Bot check: invisible for real players. The server tells us the public site key; if none, the check is off.
+let botOn=false,botWidget=null,botWait=null;
+const botReady=(async()=>{try{
+  const c=await(await fetch(CONFIG.API_BASE+'/config')).json();if(!c.turnstileSiteKey)return;
+  await new Promise((ok,no)=>{const s=document.createElement('script');s.src='https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';s.async=true;s.onload=ok;s.onerror=no;document.head.appendChild(s)});
+  botWidget=turnstile.render('#tsbox',{sitekey:c.turnstileSiteKey,execution:'execute',appearance:'interaction-only',callback:t=>{if(botWait)botWait(t)},'error-callback':()=>{if(botWait)botWait('')},'timeout-callback':()=>{if(botWait)botWait('')}});botOn=true;
+}catch(e){}})();
+function botToken(){return new Promise(res=>{
+  if(!botOn){res('');return}
+  const t=setTimeout(()=>{botWait=null;res('')},25000);
+  botWait=v=>{clearTimeout(t);botWait=null;res(v)};
+  turnstile.reset(botWidget);turnstile.execute(botWidget);
+})}
+async function post(p,b){
+  if(p==='/start'||p==='/signin'||(p==='/claim'&&!token)){await botReady;if(botOn)b={...b,ts:await botToken()}}
+  let r;try{r=await fetch(CONFIG.API_BASE+p,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token,...b})})}catch(e){throw{code:'network'}}
   const j=await r.json().catch(()=>null);if(!r.ok||!j){if(r.status===401&&token){token=null;acct=null;store.del('ctg-token');paint()}throw{code:(j&&j.error)||(r.status===404?'noserver':'error'),status:r.status}}return j}
 const api={
   start:c=>post('/start',{contest:!!c}),next:s=>post('/next',{session:s}),answer:(s,n,ch)=>post('/answer',{session:s,n,choice:ch}),finish:s=>post('/finish',{session:s}),signout:()=>post('/signout',{}),
@@ -18,7 +33,7 @@ const api={
 const SECTIONS=['home','verify','quiz','end','check','rules'];
 function show(id){SECTIONS.forEach(s=>$(s).classList.toggle('hide',s!==id));window.scrollTo(0,0);if(id==='check')paintCheck()}
 const validEmail=e=>/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(e);
-const MSG={invalid_code:'That code is not right. Check your email and try again.',network:'We cannot reach the game server right now. Check your connection and try again in a minute.',noserver:'The game server is not connected yet. Please try again soon.',rate_limited:'Too many attempts from this connection. Please wait a while and try again.',signin_required:'Please sign in with your email first.',no_contest:'The Weekly Contest is not open right now. It runs Tuesdays at 9:00 PM Eastern.',no_entries:'You have already played this contest and have no extra play entries left.',bad_cashapp:'Enter your Cash App $cashtag, like $yourname.',bad_venmo:'Enter your Venmo username, like @yourname.',bad_method:'Choose Cash App or Venmo.',no_balance:'You have no winnings to cash out yet.',duplicate:'That cash-out was already requested.',bad_email:'Please use a real, permanent email address. Temporary inboxes are not allowed.',handle_taken:'That Cash App or Venmo account is already linked to another player account.',busy:'The server is busy. Please try again in a moment.',contest_closed:'The contest closed before this game finished, so it could not be scored.',session_expired:'That game timed out. Please start a new one.',bad_state:'That game is no longer active. Please start a new one.',error:'Something went wrong. Please try again.'};
+const MSG={bot_check_failed:'We could not confirm you are human. Please try again. If it keeps happening, turn off strict privacy or ad-blocking settings for this site.',invalid_code:'That code is not right. Check your email and try again.',network:'We cannot reach the game server right now. Check your connection and try again in a minute.',noserver:'The game server is not connected yet. Please try again soon.',rate_limited:'Too many attempts from this connection. Please wait a while and try again.',signin_required:'Please sign in with your email first.',no_contest:'The Weekly Contest is not open right now. It runs Tuesdays at 9:00 PM Eastern.',no_entries:'You have already played this contest and have no extra play entries left.',bad_cashapp:'Enter your Cash App $cashtag, like $yourname.',bad_venmo:'Enter your Venmo username, like @yourname.',bad_method:'Choose Cash App or Venmo.',no_balance:'You have no winnings to cash out yet.',duplicate:'That cash-out was already requested.',bad_email:'Please use a real, permanent email address. Temporary inboxes are not allowed.',handle_taken:'That Cash App or Venmo account is already linked to another player account.',busy:'The server is busy. Please try again in a moment.',contest_closed:'The contest closed before this game finished, so it could not be scored.',session_expired:'That game timed out. Please start a new one.',bad_state:'That game is no longer active. Please start a new one.',error:'Something went wrong. Please try again.'};
 const errText=e=>MSG[e&&e.code]||MSG.error;
 
 let rulesBack='home',pending=false,vmode='claim',email='',session='',cur=null,total=10,lastDone=false,score=0,t0=0,timer=null,locked=false,result=null,inContest=false,cstat={live:null},skew=0,afterSign='home';
