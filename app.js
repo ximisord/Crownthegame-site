@@ -11,16 +11,16 @@ let botOn=false,botWidget=null,botWait=null;
 const botReady=(async()=>{try{
   const c=await(await fetch(CONFIG.API_BASE+'/config')).json();if(!c.turnstileSiteKey)return;
   await new Promise((ok,no)=>{const s=document.createElement('script');s.src='https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';s.async=true;s.onload=ok;s.onerror=no;document.head.appendChild(s)});
-  botWidget=turnstile.render('#tsbox',{sitekey:c.turnstileSiteKey,execution:'execute',appearance:'interaction-only',callback:t=>{if(botWait)botWait(t)},'error-callback':()=>{if(botWait)botWait('')},'timeout-callback':()=>{if(botWait)botWait('')}});botOn=true;
+  botWidget=turnstile.render('#tsbox',{sitekey:c.turnstileSiteKey,execution:'execute',appearance:'interaction-only',callback:t=>{if(botWait)botWait(t)},'before-interactive-callback':()=>$('tsbox').classList.add('tsshow'),'after-interactive-callback':()=>$('tsbox').classList.remove('tsshow'),'error-callback':()=>{$('tsbox').classList.remove('tsshow');if(botWait)botWait('')},'timeout-callback':()=>{if(botWait)botWait('')}});botOn=true;
 }catch(e){}})();
 function botToken(){return new Promise(res=>{
   if(!botOn){res('');return}
-  const t=setTimeout(()=>{botWait=null;res('')},25000);
+  const t=setTimeout(()=>{botWait=null;$('tsbox').classList.remove('tsshow');res('')},60000);
   botWait=v=>{clearTimeout(t);botWait=null;res(v)};
   turnstile.reset(botWidget);turnstile.execute(botWidget);
 })}
 async function post(p,b){
-  if(p==='/start'||p==='/signin'||(p==='/claim'&&!token)){await botReady;if(botOn)b={...b,ts:await botToken()}}
+  if((p==='/start'&&b.contest)||p==='/signin'||(p==='/claim'&&!token)){await botReady;if(botOn)b={...b,ts:await botToken()}}
   let r;try{r=await fetch(CONFIG.API_BASE+p,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token,...b})})}catch(e){throw{code:'network'}}
   const j=await r.json().catch(()=>null);if(!r.ok||!j){if(r.status===401&&token){token=null;acct=null;store.del('ctg-token');paint()}throw{code:(j&&j.error)||(r.status===404?'noserver':'error'),status:r.status}}return j}
 const api={

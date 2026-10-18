@@ -59,6 +59,9 @@ input:focus-visible{outline:3px solid var(--gold2);outline-offset:2px}
 select{width:100%;font:inherit;font-size:18px;color:var(--ivory);background:var(--vel);border:1px solid #3a418a;border-radius:4px;padding:14px 16px;margin:8px 0 12px}
 .bal{font-size:36px;color:var(--gold2);margin:6px 0}.row{display:flex;justify-content:space-between;gap:12px;color:var(--mute);font-size:15px;margin:4px 0}.ok2{color:#7fd6a8}
 .live{border-color:#7fd6a8}
+#tsbox{position:fixed;left:0;right:0;bottom:16px;display:flex;justify-content:center;z-index:50}
+#tsbox.tsshow{top:0;bottom:0;flex-direction:column;align-items:center;justify-content:center;gap:14px;background:rgba(10,12,40,.9)}
+#tsbox.tsshow::before{content:"Quick check: please tick the box to continue";color:#f6efdc;font:18px Georgia,serif;text-align:center;padding:0 20px}
 .opt.picked{border-color:var(--gold2);background:var(--panel)}
 </style>
 </head>
@@ -183,7 +186,7 @@ select{width:100%;font:inherit;font-size:18px;color:var(--ivory);background:var(
   </section>
 </main>
 
-<div id="tsbox" style="position:fixed;left:0;right:0;bottom:16px;display:flex;justify-content:center;z-index:50"></div>
+<div id="tsbox"></div>
 <script src="/app.js"></script>
 </body>
 </html>

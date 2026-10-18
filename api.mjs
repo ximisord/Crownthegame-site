@@ -428,7 +428,7 @@ export default async (req, context) => {
 
     // ---------- Game ----------
     if (route === "/start") {
-      if (!(await botOk(b, ip))) return fail(403, "bot_check_failed");
+      if (b.contest && !(await botOk(b, ip))) return fail(403, "bot_check_failed");   // practice play stays open to privacy browsers
       const now = Date.now(), contest = !!b.contest;
       let email = null, cid = null;
       if (contest) {
