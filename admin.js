@@ -10,7 +10,7 @@ async function call(method,path,body){
 function el(tag,text,cls){const e=document.createElement(tag);if(text!=null)e.textContent=text;if(cls)e.className=cls;return e}
 async function loadStatus(){
   const s=await call('GET','/status'),box=$('status');box.textContent='';
-  [['Email',s.mail],['Owner email set',s.ownerEmail?'yes':'NO'],['Safe concurrent writes',s.atomicWrites?'working':'NOT WORKING: update @netlify/blobs'],['Contest questions',s.contestQuestions],['Practice questions',s.practiceQuestions]]
+  [['Email',s.mail],['Bot check',s.botCheck],['Owner email set',s.ownerEmail?'yes':'NO'],['Safe concurrent writes',s.atomicWrites?'working':'NOT WORKING: update @netlify/blobs'],['Contest questions',s.contestQuestions],['Practice questions',s.practiceQuestions]]
     .forEach(([k,v])=>{const r=el('div',null,'row');r.append(el('span',k),el('b',String(v)));box.append(r)});
 }
 async function loadCashouts(){
